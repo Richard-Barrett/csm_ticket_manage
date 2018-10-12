@@ -1,3 +1,4 @@
+import json
 from ConfigParser import SafeConfigParser
 from simple_salesforce import Salesforce
 import openpyxl
@@ -111,6 +112,8 @@ for customer in customers:
 summary_logic = [
     {
         "name" : "Total Cases",
+        "logic" : "COUNT()",
+        "result" : "totalSize",
         "base_query" : [
            "AccountId = '%s'" % sf_account,
            "Environment2__c = '%s'" % sf_cloud,
@@ -123,6 +126,8 @@ summary_logic = [
     },
     {
         "name" :"Cases Opened By Customer",
+        "logic" : "COUNT()",
+        "result" : "totalSize",
         "base_query" : [
            "AccountId = '%s'" % sf_account,
            "Environment2__c = '%s'" % sf_cloud,
@@ -135,21 +140,9 @@ summary_logic = [
         ]
     },
     {
-        "name": "Resolution Time Over SLA", 
-        "base_query" : [
-           "AccountId = '%s'" % sf_account,
-           "Environment2__c = '%s'" % sf_cloud,
-           "isMosAlert__c = false",
-           "( RecordTypeId = '%s' or RecordTypeId = '%s' )" % ( tech_case_id, closed_case_id),
-           "ClosedDate != null",
-           "Resolution_Time_is_violated__c = true"
-        ],
-        "time_query": [
-           "ClosedDate < "
-        ]
-    },
-    {
         "name" : "Opened Sev1 Cases",
+        "logic" : "COUNT()",
+        "result" : "totalSize",
         "base_query" : [
            "AccountId = '%s'" % sf_account,
            "Environment2__c = '%s'" % sf_cloud,
@@ -163,6 +156,8 @@ summary_logic = [
     },
     {
         "name" : "Opened Sev2 Cases",
+        "logic" : "COUNT()",
+        "result" : "totalSize",
         "base_query" : [
            "AccountId = '%s'" % sf_account,
            "Environment2__c = '%s'" % sf_cloud,
@@ -176,6 +171,8 @@ summary_logic = [
     },
     {
         "name" : "Opened Sev3 Cases",
+        "logic" : "COUNT()",
+        "result" : "totalSize",
         "base_query" : [
            "AccountId = '%s'" % sf_account,
            "Environment2__c = '%s'" % sf_cloud,
@@ -189,6 +186,8 @@ summary_logic = [
     },
     {
         "name" : "Opened Sev4 Cases",
+        "logic" : "COUNT()",
+        "result" : "totalSize",
         "base_query" : [
            "AccountId = '%s'" % sf_account,
            "Environment2__c = '%s'" % sf_cloud,
@@ -202,6 +201,8 @@ summary_logic = [
     },
     {
         "name" : "Technical Escalated Cases",
+        "logic" : "COUNT()",
+        "result" : "totalSize",
         "base_query" : [
            "AccountId = '%s'" % sf_account,
            "Environment2__c = '%s'" % sf_cloud,
@@ -215,6 +216,8 @@ summary_logic = [
     },
     {
         "name" : "Closed Cases(Including Merged Cases)",
+        "logic" : "COUNT()",
+        "result" : "totalSize",
         "base_query" : [
            "AccountId = '%s'" % sf_account,
            "Environment2__c = '%s'" % sf_cloud,
@@ -227,7 +230,57 @@ summary_logic = [
         ]
     },
     {
+       "name": "Average resolution time Sev 2 (in hours)",
+       "logic" : "AVG(Customer_Wait_Time_in_Hours__c)aver",
+       "result" : "aver",
+       "base_query" : [
+           "AccountId = '%s'" % sf_account,
+           "Environment2__c = '%s'" % sf_cloud,
+           "isMosAlert__c = false",
+           "RecordTypeId = '%s' " % tech_case_id,
+           "Severity_Level__c = 'Sev 2'",
+           "ClosedDate != null",
+        ],
+        "time_query": [
+           "ClosedDate < "
+        ]
+    },
+    {
+       "name": "Average resolution time Sev 3 (in hours)",
+       "logic" : "AVG(Customer_Wait_Time_in_Hours__c)aver",
+       "result" : "aver",
+       "base_query" : [
+           "AccountId = '%s'" % sf_account,
+           "Environment2__c = '%s'" % sf_cloud,
+           "isMosAlert__c = false",
+           "RecordTypeId = '%s' " % tech_case_id,
+           "Severity_Level__c = 'Sev 3'",
+           "ClosedDate != null",
+        ],
+        "time_query": [
+           "ClosedDate < "
+        ]
+    },
+    {
+       "name": "Average resolution time Sev 4 (in hours)",
+       "logic" : "AVG(Customer_Wait_Time_in_Hours__c)aver",
+       "result" : "aver",
+       "base_query" : [
+           "AccountId = '%s'" % sf_account,
+           "Environment2__c = '%s'" % sf_cloud,
+           "isMosAlert__c = false",
+           "RecordTypeId = '%s' " % tech_case_id,
+           "Severity_Level__c = 'Sev 4'",
+           "ClosedDate != null",
+        ],
+        "time_query": [
+           "ClosedDate < "
+        ]
+    },
+    {
         "name" : "Completed Change Requests",
+        "logic" : "COUNT()",
+        "result" : "totalSize",
         "base_query" : [
            "AccountId = '%s'" % sf_account,
            "Environment2__c = '%s'" % sf_cloud,
@@ -242,6 +295,8 @@ summary_logic = [
     },
     {
         "name" : "Opened Change Requests",
+        "logic" : "COUNT()",
+        "result" : "totalSize",
         "base_query" : [
            "AccountId = '%s'" % sf_account,
            "Environment2__c = '%s'" % sf_cloud,
@@ -268,8 +323,8 @@ solved_tech_cases = [
     [ 
         "Case Number",
         "Severity",
-        "SLA Violated",
-        "Customer wait time",
+        #"SLA Violated",
+        "Resolution time",
         "Created By Customer",
         "Created",
         "Closed",
@@ -308,30 +363,38 @@ open_change_requests = [
         "Subject"
     ]
 ]
-violated_sla_cases = [
-    [
-        "Case Number",
-        "Severity",
-        "Created By Customer",
-        "Escalated",
-        "Created",
-        "Closed",
-        #"Resolution Time",
-        "Subject",
-        "Reason for Late resolution"
-    ]
-]
+#violated_sla_cases = [
+#    [
+#        "Case Number",
+#        "Severity",
+#        "Created By Customer",
+#        "Escalated",
+#        "Created",
+#        "Closed",
+#        #"Resolution Time",
+#        "Subject",
+#        "Reason for Late resolution"
+#    ]
+#]
 
 ## Create CSV
 for i in range(len(summary_logic)):
     summary=summary_logic[i]["name"]
     row=[summary]
     for date in [ now, last_time ]:
-      row.append( sf.query("SELECT count() from Case where %s and %s %s" % (
+      query_string = "SELECT %s from Case where %s and %s %s" % (
+          summary_logic[i]["logic"] ,
           ' and '.join(summary_logic[i]["base_query"]) ,
           ' and '.join(summary_logic[i]["time_query"]),
-          date))['totalSize'])
-    row.append(row[1] - row[2])
+          date)
+      if summary_logic[i]["result"] == "totalSize":
+         row.append( sf.query(query_string)['totalSize'])
+      else:
+         row.append( sf.query(query_string)['records'][0][summary_logic[i]["result"]])
+    try:
+      row.append(row[1] - row[2])
+    except:
+      row.append(0)
     summary_page.append(row)
 
 for case in cases:
@@ -342,14 +405,14 @@ for case in cases:
                     isCustomerCreated = True
                 else:
                     isCustomerCreated = False
-                row = [ case['CaseNumber'], case['Severity_Level__c'], case['Resolution_Time_is_violated__c'], 
+                row = [ case['CaseNumber'], case['Severity_Level__c'], #case['Resolution_Time_is_violated__c'], 
                         case['Customer_Wait_Time_in_Hours__c'],
                         isCustomerCreated, case['CreatedDate'], case['ClosedDate'], case['Subject'] ]
                 solved_tech_cases.append(row)
-                if case['Resolution_Time_is_violated__c'] == True:
-                    row = [ case['CaseNumber'], case['Severity_Level__c'], isCustomerCreated, case['L2__c'], case['CreatedDate'], case['ClosedDate'], # case['Resolution_Time_DDHHMM__c'],
-                             case['Subject'] , "" ]
-                    violated_sla_cases.append(row)
+                #if case['Resolution_Time_is_violated__c'] == True:
+                #    row = [ case['CaseNumber'], case['Severity_Level__c'], isCustomerCreated, case['L2__c'], case['CreatedDate'], case['ClosedDate'], # case['Resolution_Time_DDHHMM__c'],
+                #             case['Subject'] , "" ]
+                #    violated_sla_cases.append(row)
             if record_type["Name"] == "Technical Case" and case['Status'] != 'Solved':
                 if any(customer['Id'] == case["CreatedById"] for customer in customers):
                     isCustomerCreated = True
@@ -393,13 +456,12 @@ formated_cases = [
             "name": "open_change_requests",
             "csv" : open_change_requests
         },
-        {
-            "name": "violated_sla_cases",
-            "csv" : violated_sla_cases
-        }
+        #{
+        #    "name": "violated_sla_cases",
+        #    "csv" : violated_sla_cases
+        #}
 ]
-
-### Create Excel
+## Create Excel
 wb = openpyxl.Workbook()
 for sheet_num in range(len(formated_cases)):
     case_type = formated_cases[sheet_num]["name"]
@@ -431,6 +493,15 @@ for sheet_num in range(len(formated_cases)):
                     ws.cell(row=i+1, column=j+1).fill = PatternFill(fill_type='solid', fgColor=sev_colors["2"])
                 if formated_cases[sheet_num]["csv"][i][j] == "Low":
                     ws.cell(row=i+1, column=j+1).fill = PatternFill(fill_type='solid', fgColor=sev_colors["3"])
+            if i != 0 and formated_cases[sheet_num]["csv"][0][j] == "Resolution time":
+                if formated_cases[sheet_num]["csv"][i][1] == "Sev 1":
+                    ws.cell(row=i+1, column=j+1).fill = PatternFill(fill_type='solid', fgColor=sev_colors["1"])
+                if formated_cases[sheet_num]["csv"][i][1] == "Sev 2" and formated_cases[sheet_num]["csv"][i][j] > 24:
+                    ws.cell(row=i+1, column=j+1).fill = PatternFill(fill_type='solid', fgColor=sev_colors["3"])
+                if formated_cases[sheet_num]["csv"][i][1] == "Sev 3" and formated_cases[sheet_num]["csv"][i][j] > 120:
+                    ws.cell(row=i+1, column=j+1).fill = PatternFill(fill_type='solid', fgColor=sev_colors["3"])
+                if formated_cases[sheet_num]["csv"][i][1] == "Sev 4" and formated_cases[sheet_num]["csv"][i][j] > 240:
+                    ws.cell(row=i+1, column=j+1).fill = PatternFill(fill_type='solid', fgColor=sev_colors["3"])
             if j == 0 and i != 0:
                 for case in cases:
                     if case['CaseNumber'] == formated_cases[sheet_num]["csv"][i][j]:
@@ -438,15 +509,19 @@ for sheet_num in range(len(formated_cases)):
                         ws.cell(row=i+1, column=j+1).font= defautl_font_hyperlink
                         break
             if i != 0 and formated_cases[sheet_num]["csv"][0][j] == "Parent Case":
-                for case in cases:
-                    if case['Id'] == formated_cases[sheet_num]["csv"][i][j]:
-                        ws.cell(row=i+1, column=j+1).value=case['CaseNumber']
-                        break
+                value=sf.query("SELECT CaseNumber from Case where Id='%s'"% formated_cases[sheet_num]["csv"][i][j])['records'][0]['CaseNumber']
+                ws.cell(row=i+1, column=j+1).value=value
+                #for case in cases:
+                #    if case['Id'] == formated_cases[sheet_num]["csv"][i][j]:
+                #        ws.cell(row=i+1, column=j+1).value=case['CaseNumber']
+                #        break
             if type(formated_cases[sheet_num]["csv"][i][j]) is bool:
                 if formated_cases[sheet_num]["csv"][i][j] == True:
                     ws.cell(row=i+1, column=j+1).value="Y"
                 else:
                     ws.cell(row=i+1, column=j+1).value=""
+            if isinstance(formated_cases[sheet_num]["csv"][i][j],float):
+                ws.cell(row=i+1, column=j+1).value=round(formated_cases[sheet_num]["csv"][i][j],2)
     
     dims = {}
     i=0
