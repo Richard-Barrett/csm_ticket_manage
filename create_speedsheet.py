@@ -357,7 +357,7 @@ summary_logic = [
           "status != 'Canceled'"
        ],
        "time_query": [
-          "CreatedDate < "
+          "ClosedDate < "
        ]
    },
    {
@@ -483,7 +483,7 @@ for case in cases:
                     isCustomerCreated = False
                 row = [ case['CaseNumber'], case['Severity_Level__c'], #case['Resolution_Time_is_violated__c'], 
                         case['Customer_Wait_Time_in_Hours__c'],
-                        isCustomerCreated, "", case['CreatedDate'], case['ClosedDate'], case['Subject'] ]
+                        isCustomerCreated, case['Id'], case['CreatedDate'], case['ClosedDate'], case['Subject'] ]
                 solved_tech_cases.append(row)
                 #if case['Resolution_Time_is_violated__c'] == True:
                 #    row = [ case['CaseNumber'], case['Severity_Level__c'], isCustomerCreated, case['L2__c'], case['CreatedDate'], case['ClosedDate'], # case['Resolution_Time_DDHHMM__c'],
@@ -496,7 +496,7 @@ for case in cases:
                     isCustomerCreated = False
                 row = [ case['CaseNumber'], case['Status'], case['Severity_Level__c'], #case['Resolution_Time_is_violated__c'], 
                         case['Customer_Wait_Time_in_Hours__c'],
-                        isCustomerCreated, case['L2__c'], "", case['CreatedDate'], case['Subject'] ]
+                        isCustomerCreated, case['L2__c'], case['Id'], case['CreatedDate'], case['Subject'] ]
                 open_tech_cases.append(row)
             if record_type["Name"] == "Change Request" and case['Status'] == 'Completed':
                 maint_start = case['CreatedDate']
@@ -579,6 +579,12 @@ for sheet_num in range(len(formated_cases)):
                     ws.cell(row=i+1, column=j+1).fill = PatternFill(fill_type='solid', fgColor=sev_colors["3"])
                 if formated_cases[sheet_num]["csv"][i][1] == "Sev 4" and formated_cases[sheet_num]["csv"][i][j] > 240:
                     ws.cell(row=i+1, column=j+1).fill = PatternFill(fill_type='solid', fgColor=sev_colors["3"])
+            if i != 0 and formated_cases[sheet_num]["csv"][0][j] == "Change Request":
+               try:
+                 value=sf.query("SELECT CaseNumber from Case where Environment2__c = '%s' and RecordTypeId = '%s' and Case_Link__c ='%s'"% ( sf_cloud, change_request_id, formated_cases[sheet_num]["csv"][i][j]))['records'][0]['CaseNumber'] 
+                 ws.cell(row=i+1, column=j+1).value=value
+               except:
+                 ws.cell(row=i+1, column=j+1).value=""
             if j == 0 and i != 0:
                 for case in cases:
                     if case['CaseNumber'] == formated_cases[sheet_num]["csv"][i][j]:
