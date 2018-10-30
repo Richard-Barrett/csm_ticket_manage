@@ -79,14 +79,15 @@ ticket_fields = [
         "Resolution_Time_DDHHMM__c",
         "SLA_resolution_time__c",
         "Case_Link__c",
-        "Customer_Wait_Time_in_Hours__c"
+        "Customer_Wait_Time_in_Hours__c",
+        "ParentId"
 ]
 query_field = [
         "AccountId = '%s'" % sf_account,
         "Environment2__c = '%s'" % sf_cloud,
         "isMosAlert__c = false",
         "status != 'Canceled'",
-        "status != 'Closed'",
+        #"status != 'Closed'",
         "( ClosedDate = null or (ClosedDate > %s and ClosedDate < %s)) and CreatedDate < %s" % ( last_time, now, now )
 ]
 
@@ -344,6 +345,22 @@ summary_logic = [
        ]
    },
    {
+       "name" : "Opened Change Requests",
+       "logic" : "COUNT()",
+       "duration": 0,
+       "result" : "totalSize",
+       "base_query" : [
+          "AccountId = '%s'" % sf_account,
+          "Environment2__c = '%s'" % sf_cloud,
+          "isMosAlert__c = false",
+          "RecordTypeId = '%s'" % change_request_id,
+          "status != 'Canceled'"
+       ],
+       "time_query": [
+          "CreatedDate < "
+       ]
+   },
+   {
        "name" : "Completed Change Requests",
        "logic" : "COUNT()",
        "result" : "totalSize",
@@ -359,25 +376,7 @@ summary_logic = [
        "time_query": [
           "ClosedDate < "
        ]
-   },
-   {
-       "name" : "Opened Change Requests",
-       "logic" : "COUNT()",
-       "duration": 0,
-       "result" : "totalSize",
-       "base_query" : [
-          "AccountId = '%s'" % sf_account,
-          "Environment2__c = '%s'" % sf_cloud,
-          "isMosAlert__c = false",
-          "RecordTypeId = '%s'" % change_request_id,
-          "ClosedDate = null",
-          "status != 'Canceled'"
-       ],
-       "time_query": [
-          "CreatedDate < "
-       ]
    }
-
 ]
 summary_page = [
     [
@@ -391,8 +390,9 @@ solved_tech_cases = [
     [ 
         "Case Number",
         "Severity",
+        "Merged To",
         #"SLA Violated",
-        "Resolution time",
+        "Resolution Time",
         "Created By Customer",
         "Change Request",
         "Created",
@@ -406,7 +406,7 @@ open_tech_cases = [
         "Status",
         "Severity",
         #"SLA Violated",
-        "Resolution time",
+        #"Resolution time",
         "Created By Customer",
         "Escalated",
         "Change Request",
@@ -476,12 +476,12 @@ for i in range(len(summary_logic)):
 for case in cases:
     for record_type in record_types:
         if record_type["Id"] == case["RecordTypeId"]:
-            if record_type["Name"] == "Technical Case" and case['Status'] == 'Solved':
+            if ( record_type["Name"] == "Technical Case" or record_type["Name"] == "Closed Case" ) and ( case['Status'] == 'Solved' or case['Status'] == 'Closed'):
                 if any(customer['Id'] == case["CreatedById"] for customer in customers):
                     isCustomerCreated = True
                 else:
                     isCustomerCreated = False
-                row = [ case['CaseNumber'], case['Severity_Level__c'], #case['Resolution_Time_is_violated__c'], 
+                row = [ case['CaseNumber'], case['Severity_Level__c'], case['ParentId'], #case['Resolution_Time_is_violated__c'], 
                         case['Customer_Wait_Time_in_Hours__c'],
                         isCustomerCreated, case['Id'], case['CreatedDate'], case['ClosedDate'], case['Subject'] ]
                 solved_tech_cases.append(row)
@@ -495,7 +495,7 @@ for case in cases:
                 else:
                     isCustomerCreated = False
                 row = [ case['CaseNumber'], case['Status'], case['Severity_Level__c'], #case['Resolution_Time_is_violated__c'], 
-                        case['Customer_Wait_Time_in_Hours__c'],
+                        #case['Customer_Wait_Time_in_Hours__c'],
                         isCustomerCreated, case['L2__c'], case['Id'], case['CreatedDate'], case['Subject'] ]
                 open_tech_cases.append(row)
             if record_type["Name"] == "Change Request" and case['Status'] == 'Completed':
@@ -570,7 +570,7 @@ for sheet_num in range(len(formated_cases)):
                     ws.cell(row=i+1, column=j+1).fill = PatternFill(fill_type='solid', fgColor=sev_colors["2"])
                 if formated_cases[sheet_num]["csv"][i][j] == "Low":
                     ws.cell(row=i+1, column=j+1).fill = PatternFill(fill_type='solid', fgColor=sev_colors["3"])
-            if i != 0 and formated_cases[sheet_num]["csv"][0][j] == "Resolution time":
+            if i != 0 and formated_cases[sheet_num]["csv"][0][j] == "Resolution Time":
                 if formated_cases[sheet_num]["csv"][i][1] == "Sev 1":
                     ws.cell(row=i+1, column=j+1).fill = PatternFill(fill_type='solid', fgColor=sev_colors["1"])
                 if formated_cases[sheet_num]["csv"][i][1] == "Sev 2" and formated_cases[sheet_num]["csv"][i][j] > 24:
@@ -579,6 +579,11 @@ for sheet_num in range(len(formated_cases)):
                     ws.cell(row=i+1, column=j+1).fill = PatternFill(fill_type='solid', fgColor=sev_colors["3"])
                 if formated_cases[sheet_num]["csv"][i][1] == "Sev 4" and formated_cases[sheet_num]["csv"][i][j] > 240:
                     ws.cell(row=i+1, column=j+1).fill = PatternFill(fill_type='solid', fgColor=sev_colors["3"])
+                if formated_cases[sheet_num]["csv"][i][2] != None:
+                    ws.cell(row=i+1, column=j+1).fill = PatternFill(fill_type='solid', fgColor="808080")
+            if i != 0 and formated_cases[sheet_num]["csv"][0][j] == "Merged To" and formated_cases[sheet_num]["csv"][i][j] != None:
+               value=sf.query("SELECT CaseNumber from Case where Id='%s'"% formated_cases[sheet_num]["csv"][i][j])['records'][0]['CaseNumber']
+               ws.cell(row=i+1, column=j+1).value=value
             if i != 0 and formated_cases[sheet_num]["csv"][0][j] == "Change Request":
                try:
                  value=sf.query("SELECT CaseNumber from Case where Environment2__c = '%s' and RecordTypeId = '%s' and Case_Link__c ='%s'"% ( sf_cloud, change_request_id, formated_cases[sheet_num]["csv"][i][j]))['records'][0]['CaseNumber'] 
@@ -592,8 +597,11 @@ for sheet_num in range(len(formated_cases)):
                         ws.cell(row=i+1, column=j+1).font= defautl_font_hyperlink
                         break
             if i != 0 and formated_cases[sheet_num]["csv"][0][j] == "Parent Case":
-                value=sf.query("SELECT CaseNumber from Case where Id='%s'"% formated_cases[sheet_num]["csv"][i][j])['records'][0]['CaseNumber']
-                ws.cell(row=i+1, column=j+1).value=value
+                try:
+                  value=sf.query("SELECT CaseNumber from Case where Id='%s'"% formated_cases[sheet_num]["csv"][i][j])['records'][0]['CaseNumber']
+                  ws.cell(row=i+1, column=j+1).value=value
+                except:
+                  ws.cell(row=i+1, column=j+1).value=""
                 #for case in cases:
                 #    if case['Id'] == formated_cases[sheet_num]["csv"][i][j]:
                 #        ws.cell(row=i+1, column=j+1).value=case['CaseNumber']
@@ -618,4 +626,9 @@ for sheet_num in range(len(formated_cases)):
     for col, value in dims.items():
         ws.column_dimensions[col].width = value
 ws.active = 0
+for sheet in wb:
+    if sheet.title == 'summary_page':
+        sheet.sheet_view.tabSelected = True
+    else:
+        sheet.sheet_view.tabSelected = False
 wb.save(report_file_name)
